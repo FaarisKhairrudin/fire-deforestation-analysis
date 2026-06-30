@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Environment
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Outputs
+outputs/figures/*
+outputs/models/*
+outputs/submissions/*
+!outputs/figures/.gitkeep
+!outputs/models/.gitkeep
+!outputs/submissions/.gitkeep
+
+# Model weights
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.h5
+*.ckpt
+
+# Hugging Face / cache
+.cache/
+hf_cache/
+
+# System
+.DS_Store
+Thumbs.db
