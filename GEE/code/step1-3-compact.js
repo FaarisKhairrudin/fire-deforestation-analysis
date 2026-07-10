@@ -93,13 +93,11 @@ var deforestationMaps = ee.ImageCollection(
     })
 );
 
-// [FIX] Menghindari list.map untuk reduceRegion agar tabel tidak kosong
+    // [FIX] Menghindari list.map untuk reduceRegion agar tabel tidak kosong
 var deforValidationStats = deforestationMaps.map(function (img) {
     var y = ee.Number(img.get('year_from'));
-    // [FIX] Lossyear Hansen: lossyear = year - 2000. Untuk transisi T→T+1, ambil lossyear di tahun T DAN T+1
-    var gfwLoss = hansenGFC.select('lossyear')
-        .eq(y.subtract(2000))
-        .or(hansenGFC.select('lossyear').eq(y.subtract(1999)));
+    // Lossyear Hansen: lossyear = year - 2000. Untuk transisi NDVI T→T+1, lossyear yang sesuai adalah T+1
+    var gfwLoss = hansenGFC.select('lossyear').eq(y.subtract(1999));
     var stats = ee.Image.cat([img.rename('NDVI_Defor'), gfwLoss.rename('GFW_Loss'), img.and(gfwLoss).rename('Overlap')])
         .multiply(ee.Image.pixelArea()).divide(10000).reduceRegion({
             reducer: ee.Reducer.sum(), geometry: jambiROI, scale: 300, maxPixels: CONFIG.MAX_PIXELS, bestEffort: true

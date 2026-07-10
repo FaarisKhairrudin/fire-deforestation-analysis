@@ -212,12 +212,20 @@ Overlap = area yang terdeteksi SEBAGAI deforestasi
           oleh NDVI differencing DAN oleh GFW
 ```
 
-Untuk transisi T → T+1, kita ambil lossyear **T** dan **T+1** karena ada jeda waktu antara kejadian di lapangan dengan sinyal yang terekam oleh masing-masing metode:
+NDVI differencing membandingkan komposit T (keadaan "sebelum") dengan komposit T+1 (keadaan "sesudah"). Hansen lossyear mencatat tahun kehilangan hutan terdeteksi. Untuk transisi T → T+1, lossyear yang sesuai adalah **T+1**, karena Hansen mendeteksi hutan hilang di tahun yang sama saat NDVI differencing melihat perubahan:
 
 ```javascript
-gfwLoss = hansenGFC.select('lossyear').eq(y-2000)  // loss di tahun T
-         .or(hansenGFC.select('lossyear').eq(y-1999))  // loss di tahun T+1
+// y = tahun awal transisi (T). Untuk transisi 2020→2021, y=2020.
+// y-1999 = 21 → lossyear 21 → kehilangan tahun 2021
+gfwLoss = hansenGFC.select('lossyear').eq(y.subtract(1999));
 ```
+
+<!--
+CATATAN: lossyear = T+1 (y-1999), BUKAN T (y-2000).
+Alasan: NDVI differencing mengukur perubahan dari komposit T ke T+1.
+Kalau hutan sudah hilang di tahun T, komposit T sudah menunjukkan NDVI rendah,
+sehingga selisih NDVI T→T+1 jadi kecil dan tidak terdeteksi sebagai deforestasi.
+-->
 
 ### 3.4. Interpretasi Hasil Validasi
 
