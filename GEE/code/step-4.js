@@ -5,16 +5,17 @@
 
 var CONFIG = {
     provinceName: 'Jambi',
-    startYear: 2020,
+    startYear: 2016,
     endYear: 2025,
 
     // Path Assets milikmu
-    assetPath: 'users/faarisnew/fire-drone-2026/',
+    assetPath: 'users/faarisnew/fire-drone-2026-v2/',
 
     exportScale: 30,
     exportCRS: 'EPSG:32648',
     bufferRadius: 1000,
-    MAX_PIXELS: 1e13
+    MAX_PIXELS: 1e13,
+    driveFolder: 'GEE_FireDrone_Jambi_Final'
 };
 
 // 1. REGION OF INTEREST
@@ -37,7 +38,7 @@ var clearingList = yearsClient.map(function (y) {
         units: 'meters'
     });
 
-    var isBurned = burn.gte(2).or(hotspotBuffer.eq(1));
+    var isBurned = burn.gte(2).and(hotspotBuffer.eq(1));
     var burningClearing = defor.eq(1).and(isBurned);
     var mechanicalClearing = defor.eq(1).and(isBurned.not());
 
@@ -46,6 +47,9 @@ var clearingList = yearsClient.map(function (y) {
         .where(burningClearing, 2)
         .updateMask(defor.eq(1))
         .rename('clearing_type')
+        .addBands(defor.rename('defor'))
+        .addBands(hotspotBuffer.rename('hotspotBuffer'))
+        .addBands(burn.gte(2).rename('burnGte2'))
         .set('year_from', y);
 
     return clearingClass;
@@ -57,13 +61,24 @@ var clearingAnalysis = ee.ImageCollection(clearingList);
 var spatialMetrics = clearingAnalysis.map(function (img) {
     var y = ee.Number(img.get('year_from'));
 
-    var mechAreaImg = img.eq(1).multiply(ee.Image.pixelArea()).divide(10000);
-    var burnAreaImg = img.eq(2).multiply(ee.Image.pixelArea()).divide(10000);
-    var totalDeforImg = img.gt(0).multiply(ee.Image.pixelArea()).divide(10000);
+    var mechAreaImg = img.select('clearing_type').eq(1).multiply(ee.Image.pixelArea()).divide(10000);
+    var burnAreaImg = img.select('clearing_type').eq(2).multiply(ee.Image.pixelArea()).divide(10000);
+    var totalDeforImg = img.select('clearing_type').gt(0).multiply(ee.Image.pixelArea()).divide(10000);
+
+    var defor = img.select('defor');
+    var hotspotBuffer = img.select('hotspotBuffer');
+    var burnGte2 = img.select('burnGte2');
+
+    var deforInHotspot = defor.eq(1).and(hotspotBuffer.eq(1))
+        .multiply(ee.Image.pixelArea()).divide(10000).rename('Area_Defor_in_Hotspot_ha');
+    var deforWithBurn = defor.eq(1).and(burnGte2.eq(1))
+        .multiply(ee.Image.pixelArea()).divide(10000).rename('Area_Defor_with_Burn_ha');
 
     var stats = ee.Image.cat([mechAreaImg.rename('Area_Mechanical_ha'),
     burnAreaImg.rename('Area_Burning_ha'),
-    totalDeforImg.rename('Area_Total_Defor_ha')])
+    totalDeforImg.rename('Area_Total_Defor_ha'),
+        deforInHotspot,
+        deforWithBurn])
         .reduceRegion({
             reducer: ee.Reducer.sum(),
             geometry: jambiROI,
@@ -148,7 +163,7 @@ print('Visualisasi aktif. Buka panel "Layers" di kanan atas peta untuk menceklis
 Export.table.toDrive({
     collection: spatialMetrics,
     description: 'Tahap4_Clearing_Transition_Stats',
-    folder: 'GEE_FireDrone_Jambi_Final',
+    folder: CONFIG.driveFolder,
     fileFormat: 'CSV'
 });
 
@@ -157,7 +172,7 @@ yearsClient.forEach(function (yr) {
     Export.image.toDrive({
         image: finalMap,
         description: 'Tahap4_ClearingType_Map_' + yr + '_' + (yr + 1),
-        folder: 'GEE_FireDrone_Jambi_Final',
+        folder: CONFIG.driveFolder,
         scale: CONFIG.exportScale,
         region: jambiROI,
         maxPixels: CONFIG.MAX_PIXELS
